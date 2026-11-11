@@ -74,6 +74,17 @@ jobs:
           Copy-Item ../bi1/files/sdk/Build.ps1 sdk/Build.ps1 -Force
           Copy-Item ../bi1/files/sdk/manifest.json sdk/manifest.json -Force
           ./sdk/Build.ps1
+      - name: Compare symbols, bi-1 vs plain upstream
+        if: always()
+        continue-on-error: true
+        run: |
+          NM=$(find "$RUNNER_TEMP/jieli" -path '*/pi32v2/bin/nm' -type f | head -n 1)
+          "$NM" --print-size fm1base/build/dx7/sdk.elf | awk 'NF==4 && $3 !~ /^[bB]$/ {print $2, $3, $4}' | sort -r > base.txt
+          "$NM" --print-size fm1/build/dx7/sdk.elf | awk 'NF==4 && $3 !~ /^[bB]$/ {print $2, $3, $4}' | sort -r > bi1.txt
+          echo "=== only in bi-1 (size type name) ==="
+          awk 'NR==FNR {s[$3]=1; next} !($3 in s)' base.txt bi1.txt | head -n 45
+          echo "=== largest in plain upstream ==="
+          head -n 45 base.txt
 
       - name: Name the files
         run: |
