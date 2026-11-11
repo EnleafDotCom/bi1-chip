@@ -313,10 +313,29 @@ if ($isWin) {
     else { $pi32 = $null }
     if (!$pi32) { throw 'Install the JieLi PI32v2 Linux toolchain and set FM1_PI32_TOOLCHAIN to its directory containing pi32v2/bin/clang.' }
     $clang = Join-Path $pi32 'bin/clang'
-    $ldTool = Join-Path $pi32 'bin/ld'
-    $goldPlugin = Join-Path $pi32 'bin/LLVMgold.so'
-    $nmTool = Join-Path $pi32 'bin/nm'
-    $objcopyTool = Join-Path $pi32 'bin/objcopy'
+    # JieLi's Linux releases name and place the linker tools differently; find them.
+    $searchRoot = Split-Path -Parent $tcRoot
+    function Find-Tool([string[]]$names) {
+        foreach ($n in $names) { $c = Join-Path $pi32 "bin/$n"; if (Test-Path -LiteralPath $c) { return $c } }
+        foreach ($n in $names) {
+            $hit = Get-ChildItem -LiteralPath $searchRoot -Recurse -File -Filter $n -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch '/(include|share|doc)/' } | Select-Object -First 1
+            if ($hit) { return $hit.FullName }
+        }
+        return $null
+    }
+    $ldTool = if ($env:FM1_LD) { $env:FM1_LD } else { Find-Tool @('pi32v2-ld','ld','ld.gold','pi32v2-ld.gold') }
+    $goldPlugin = if ($env:FM1_GOLD) { $env:FM1_GOLD } else { Find-Tool @('LLVMgold.so','libLLVMgold.so') }
+    $nmTool = if ($env:FM1_NM) { $env:FM1_NM } else { Find-Tool @('llvm-nm','nm','pi32v2-nm') }
+    $objcopyTool = if ($env:FM1_OBJCOPY) { $env:FM1_OBJCOPY } else { Find-Tool @('llvm-objcopy','objcopy','pi32v2-objcopy') }
+    Write-Host "Toolchain: clang $clang"
+    Write-Host "Toolchain: linker $ldTool, plugin $goldPlugin, nm $nmTool, objcopy $objcopyTool"
+    if (!$ldTool -or !$goldPlugin -or !$nmTool -or !$objcopyTool) {
+        Write-Host 'Files in the toolchain bin folders:'
+        Get-ChildItem -LiteralPath $searchRoot -Recurse -Directory -Filter bin -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "  $($_.FullName): $((Get-ChildItem -LiteralPath $_.FullName -File | ForEach-Object Name) -join ', ')" }
+        throw 'The JieLi Linux toolchain is missing a linker tool (see the list above).'
+    }
     $tcRequired = @()
 }
 # Verify the matching SDK and toolchain before compiling APP.
