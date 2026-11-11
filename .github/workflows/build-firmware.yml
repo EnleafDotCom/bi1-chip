@@ -53,6 +53,27 @@ jobs:
           "$NM" --print-size --size-sort -r fm1/build/dx7/sdk.elf | head -n 60 || true
           OBJDUMP=$(find "$RUNNER_TEMP/jieli" -path '*/common/bin/objdump' -type f | head -n 1)
           "$OBJDUMP" -h fm1/build/dx7/sdk.elf || true
+      - name: Get plain upstream FM1 Open for comparison
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          repository: m-vave/fm1_open
+          ref: 4c7496daac04a95ff10d1afdcc8f9ead2dbabc41
+          path: fm1base
+      - name: Show what bi-1 changes
+        if: always()
+        run: |
+          cd bi1/files
+          for f in $(find . -type f | sort); do b=../../fm1base/$f; if [ -f $b ]; then echo "REPLACES $f $(wc -c < $f) vs $(wc -c < $b)"; else echo "NEW $f $(wc -c < $f)"; fi; done
+      - name: Build plain upstream for comparison
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        working-directory: fm1base
+        run: |
+          Copy-Item ../bi1/files/sdk/Build.ps1 sdk/Build.ps1 -Force
+          Copy-Item ../bi1/files/sdk/manifest.json sdk/manifest.json -Force
+          ./sdk/Build.ps1
 
       - name: Name the files
         run: |
