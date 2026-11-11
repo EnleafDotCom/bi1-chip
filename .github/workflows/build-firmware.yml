@@ -1,0 +1,60 @@
+name: Build bi-1 firmware
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Get the bi-1 files
+        uses: actions/checkout@v4
+        with:
+          path: bi1
+
+      - name: Get M-VAVE FM1 Open (V14)
+        uses: actions/checkout@v4
+        with:
+          repository: m-vave/fm1_open
+          ref: 4c7496daac04a95ff10d1afdcc8f9ead2dbabc41
+          path: fm1
+
+      - name: Add bi-1 to FM1 Open
+        run: cp -r bi1/files/. fm1/
+
+      - name: Get JieLi's Linux compiler
+        run: |
+          mkdir -p "$RUNNER_TEMP/jieli"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/toolchain.tar.xz" https://pkgman.jieliapp.com/s/linux-toolchain
+          tar -xJf "$RUNNER_TEMP/toolchain.tar.xz" -C "$RUNNER_TEMP/jieli"
+          CLANG=$(find "$RUNNER_TEMP/jieli" -path '*pi32v2/bin/clang' -type f | head -n 1)
+          if [ -z "$CLANG" ]; then CLANG=$(find "$RUNNER_TEMP/jieli" -path '*/bin/clang' -type f | head -n 1); fi
+          if [ -z "$CLANG" ]; then echo "No clang found"; find "$RUNNER_TEMP/jieli" -maxdepth 3; exit 1; fi
+          "$CLANG" --version
+          echo "FM1_PI32_TOOLCHAIN=$(dirname "$(dirname "$CLANG")")" >> "$GITHUB_ENV"
+
+      - name: Build the firmware and the installer page
+        shell: pwsh
+        working-directory: fm1
+        env:
+          FM1_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: ./sdk/Build.ps1 -Package
+
+      - name: Name the files
+        run: |
+          mkdir -p out
+          cp fm1/build/dx7/generated/FM1_OFFICIAL_OPEN.fwsc out/bi1-chip-synth.fwsc
+          cp fm1/build/official-web/FM1-Official-Open-Source.html out/bi1-FM1-Installer.html
+
+      - name: Keep the installer page
+        uses: actions/upload-artifact@v4
+        with:
+          name: bi1-installer
+          path: out/bi1-FM1-Installer.html
+
+      - name: Keep the firmware file
+        uses: actions/upload-artifact@v4
+        with:
+          name: bi1-chip-synth-firmware
+          path: out/bi1-chip-synth.fwsc
