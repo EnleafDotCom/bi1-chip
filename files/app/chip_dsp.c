@@ -189,7 +189,7 @@ static AC int gate_ticks(int steps, int factor_q8)
 {
     return (int)((((uint32_t)steps * chip_ticks_per_step_q8) >> 4) * (uint32_t)factor_q8 >> 12);
 }
-static const uint16_t arp_len_q8[3] AD = {90, 205, 346}; /* .35 .8 1.35 */
+static uint16_t arp_len_q8[3] AD = {90, 205, 346}; /* .35 .8 1.35 */
 static AC void part_events(unsigned part, unsigned lv, int32_t gs, unsigned prog, int lift, int skip_drums_but_kick)
 {
     if (!lv || chip_song.mute[part]) return;
@@ -212,7 +212,7 @@ static AC void part_events(unsigned part, unsigned lv, int32_t gs, unsigned prog
     int gate = gate_ticks(n->d, sd_factor);
     if (part == CHIP_CHORDS) {
         uint8_t notes[4]; unsigned cnt = 0;
-        static const int8_t add[4] AD = {0, 2, 4, 6};
+        static int8_t add[4] AD = {0, 2, 4, 6};
         for (unsigned i = 0; i < 4; ++i) {
             int m = midi_of(48 + key, cd + n->o + add[i]);
             while (m < 52) m += 12;
@@ -235,7 +235,7 @@ static AC void part_events(unsigned part, unsigned lv, int32_t gs, unsigned prog
     int m = midi_of((part == CHIP_BASS ? 24 : 60) + key, cd + o);
     if (part == CHIP_BASS) { while (m < 33) m += 12; while (m >= 45 + (o >= 7 ? 12 : 0)) m -= 12; }
     else { while (m > 88) m -= 12; while (m < 55) m += 12; }
-    static const uint8_t base_patch[4][3] AD = {{P_PULSE50, P_PULSE25, P_SIDLEAD}, {P_PULSE12, P_PULSE25, P_WAVE}, {0, 0, 0}, {P_TRI, P_PULSEBASS, P_SIDBASS}};
+    static uint8_t base_patch[4][3] AD = {{P_PULSE50, P_PULSE25, P_SIDLEAD}, {P_PULSE12, P_PULSE25, P_WAVE}, {0, 0, 0}, {P_TRI, P_PULSEBASS, P_SIDBASS}};
     start_patch(part, base_patch[part][chip_song.patch[part] % 3], m, gate, lv == CHIP_LIGHT ? 205 : 256, 0, 0);
 }
 
@@ -329,7 +329,7 @@ static AC void step_tick(void)
     }
     if (fill && !chip_song.mute[CHIP_DRUMS]) {
         int32_t k = left < fill_left ? left : fill_left;
-        static const uint8_t toms[4] AD = {7, 6, 5, 5};
+        static uint8_t toms[4] AD = {7, 6, 5, 5};
         drum_hit(toms[(k - 1) & 3], 154 + (4 - k) * 20);
         if (k <= 2) drum_hit(1, 102 + (2 - k) * 51);
     }
@@ -385,8 +385,8 @@ static AC void voice_tick(struct voice *x)
 
 /* ------------------------------------------------------------ the block */
 static int32_t busbuf[CHIP_PARTS][FM1_BLOCK_FRAMES];
-static const uint8_t live_patch[4][3] AD = {{P_PULSE50, P_PULSE25, P_SIDLEAD}, {P_PULSE12, P_PULSE25, P_WAVE}, {P_PULSEPAD, P_PULSEPAD, P_WAVEPAD}, {P_TRI, P_PULSEBASS, P_SIDBASS}};
-static const uint8_t live_drum[12] AD = {0, 1, 2, 3, 4, 5, 6, 7, 8, 3, 4, 1}; /* the twelve keys of each octave */
+static uint8_t live_patch[4][3] AD = {{P_PULSE50, P_PULSE25, P_SIDLEAD}, {P_PULSE12, P_PULSE25, P_WAVE}, {P_PULSEPAD, P_PULSEPAD, P_WAVEPAD}, {P_TRI, P_PULSEBASS, P_SIDBASS}};
+static uint8_t live_drum[12] AD = {0, 1, 2, 3, 4, 5, 6, 7, 8, 3, 4, 1}; /* the twelve keys of each octave */
 /* Played from the panel: the pressed note is the root; the chord's third and fifth come from the mood's scale. */
 static AC void live_key_down(unsigned part, int note, unsigned key)
 {
