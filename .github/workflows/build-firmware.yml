@@ -49,6 +49,10 @@ jobs:
         run: |
           find "$RUNNER_TEMP/jieli" -type f -path '*/bin/*' | sort
           find "$RUNNER_TEMP/jieli" -maxdepth 3 -type d | sort
+          NM=$(find "$RUNNER_TEMP/jieli" -path '*/pi32v2/bin/nm' -type f | head -n 1)
+          "$NM" --print-size --size-sort -r fm1/build/dx7/sdk.elf | head -n 60 || true
+          OBJDUMP=$(find "$RUNNER_TEMP/jieli" -path '*/common/bin/objdump' -type f | head -n 1)
+          "$OBJDUMP" -h fm1/build/dx7/sdk.elf || true
 
       - name: Name the files
         run: |
