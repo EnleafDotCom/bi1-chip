@@ -40,6 +40,11 @@ jobs:
         env:
           FM1_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
         run: ./sdk/Build.ps1 -Package
+      - name: List toolchain tools
+        if: always()
+        run: |
+          find "$RUNNER_TEMP/jieli" -type f -path '*/bin/*' | sort
+          find "$RUNNER_TEMP/jieli" -maxdepth 3 -type d | sort
 
       - name: Name the files
         run: |
