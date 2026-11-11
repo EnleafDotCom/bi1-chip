@@ -33,6 +33,10 @@ jobs:
           if [ -z "$CLANG" ]; then echo "No clang found"; find "$RUNNER_TEMP/jieli" -maxdepth 3; exit 1; fi
           "$CLANG" --version
           echo "FM1_PI32_TOOLCHAIN=$(dirname "$(dirname "$CLANG")")" >> "$GITHUB_ENV"
+          LD=$(find "$RUNNER_TEMP/jieli" -path '*/pi32v2/bin/ld' -type f | head -n 1)
+          NM=$(find "$RUNNER_TEMP/jieli" -path '*/pi32v2/bin/nm' -type f | head -n 1)
+          echo "FM1_LD=$LD" >> "$GITHUB_ENV"
+          echo "FM1_NM=$NM" >> "$GITHUB_ENV"
 
       - name: Build the firmware and the installer page
         shell: pwsh
