@@ -15,6 +15,21 @@ static unsigned chip_sel = CHIP_LEAD;
 enum { CHIP_LANE_Y = 34, CHIP_LANE_H = 30, CHIP_CELL_X = 74, CHIP_CELL_W = 10 };
 static const char *const chip_level_names[3] = {"OFF", "LIGHT", "FULL"};
 
+/* Panel lights: white keys 1-5 show which parts are in, PLAY and REC their state. */
+static void chip_leds(void)
+{
+    static uint32_t shown = ~0U;
+    uint32_t bits = 0;
+    for (unsigned p = 0; p < CHIP_PARTS; ++p)
+        if (chip_rt.live.lv[p] && !chip_song.mute[p]) bits |= 1U << (14 + white_keys[p]);
+    if (chip_rt.playing) bits |= 1U << PLAY;
+    if (chip_recording) bits |= 1U << REC;
+    uint32_t changed = bits ^ shown;
+    for (unsigned led = 0; led < 32; ++led)
+        if (changed & (1U << led)) fm1_led_set(led, (bits >> led) & 1U);
+    shown = bits;
+}
+
 static unsigned chip_cell_state(unsigned lane, unsigned step, unsigned lv, unsigned shown, unsigned here)
 {
     unsigned on;

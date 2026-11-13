@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception */
 #include "instrument.h"
 #include "chip.h"
+/* bi-1 firmware: the chip synth is the only instrument and owns the whole
+ * panel, so the stock FM1 Open pages are compiled out. This frees the Flash
+ * bi-1 needs. Build with -DFM1_CHIP_ONLY=0 to keep the stock pages. */
+#ifndef FM1_CHIP_ONLY
+#define FM1_CHIP_ONLY 1
+#endif
 #include "fm_patch.h"
 #include "version.h"
 #include "fm1_engine_control.h"
@@ -1371,6 +1377,11 @@ static void draw_page_body(const struct fm1_ble_status *ble)
             text(8, 8, visible == PROJECT ? "SAVE PROJECT" : "PRESETS", 2, ACCENT, BACK);
     }
     if (visible == STARTUP) { boot_draw(); return; }
+#if FM1_CHIP_ONLY
+    if (!paint_rendering) chip_leds();
+    chip_draw();
+    return;
+#endif
     const struct groove_view *views = frame_views, *v = &views[track];
     if (!paint_rendering) leds(v, visible);
     if (visible == PRESET_BROWSER) {
@@ -1611,6 +1622,13 @@ static void draw(const struct fm1_ble_status *ble)
         midi_active[t] = (int32_t)(midi_until[t] - frame_time) > 0;
     }
     frame_ble = *ble;
+#if FM1_CHIP_ONLY
+    (void)visible;
+    paint_priority = 0;
+    cache = &saved_cache;
+    draw_page(&frame_ble);
+    return;
+#endif
     if (visible == BLE) {
         fm1_bluetooth_get_status(&frame_radio);
         frame_radio_flags = groove_settings_radio_flags();
@@ -1863,7 +1881,7 @@ static int apply_controls(const struct fm1_controls *controls, uint32_t now,
     }
     unsigned old_page = page, old_mode = navigation_mode();
     /* This firmware is the bi-1 chip synth: it owns the whole panel and never leaves its page. */
-    if (page == CHIP) {
+    if (FM1_CHIP_ONLY || page == CHIP) {
         chip_page_input(controls, pressed, old_keys, now);
         arp_down = arp_long = 0; play_handled = 1;
         return 1;
@@ -2626,6 +2644,7 @@ void groove_screen_control(void)
     /* This firmware starts in the bi-1 chip synth. HOME leaves it for FM1 Open. */
     static unsigned chip_started;
     if (!chip_started && !boot_active) { chip_started = 1; page = CHIP; cache->shown_page = ~0U; input_changed = 1; }
+    if (FM1_CHIP_ONLY) page = CHIP;
     chip_poll(now);
     struct fm1_ble_status ble = {0};
     fm1_ble_get_status(&ble);
@@ -2652,7 +2671,9 @@ void groove_screen_control(void)
     unsigned old_page = page;
     unsigned boundary =
         controls.buttons != previous_buttons || controls.encoders[0] || controls.encoders[6];
-    if (page == FM_EDIT && !glo_down) {
+    if (FM1_CHIP_ONLY) {
+        boundary |= key_down != 0;
+    } else if (page == FM_EDIT && !glo_down) {
         for (unsigned i = 0; i < 10; ++i)
             boundary |= (key_down & (1U << edit_keys[i])) != 0;
     } else if (page == TONE_EDIT && groove_source_type(track) == GROOVE_303 && !glo_down) {
