@@ -7,6 +7,15 @@
 #ifndef FM1_CHIP_ONLY
 #define FM1_CHIP_ONLY 1
 #endif
+#if FM1_CHIP_ONLY
+/* The firmware check requires the Bluetooth runtime the stock pages used.
+ * bi-1 has no Bluetooth page, so reference those calls here to keep them linked. */
+typedef void (*fm1_keep_fn)(void);
+static fm1_keep_fn const volatile fm1_keep_api[] = {
+    (fm1_keep_fn)fm1_ble_scan, (fm1_keep_fn)fm1_ble_connect, (fm1_keep_fn)fm1_ble_disconnect,
+    (fm1_keep_fn)fm1_ble_forget_bonds, (fm1_keep_fn)fm1_ble_get_device, (fm1_keep_fn)fm1_bluetooth_get_status,
+};
+#endif
 #include "fm_patch.h"
 #include "version.h"
 #include "fm1_engine_control.h"
@@ -1830,6 +1839,9 @@ void groove_screen_init(void)
     fm1_screen_init();
     boot_started = fm1_millis();
     boot_active = 1;
+#if FM1_CHIP_ONLY
+    for (unsigned i = 0; i < sizeof fm1_keep_api / sizeof fm1_keep_api[0]; ++i) (void)fm1_keep_api[i];
+#endif
     chip_init(fm1_millis());
     struct fm1_ble_status ble = {0};
     fm1_ble_get_status(&ble);
